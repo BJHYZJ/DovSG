@@ -28,5 +28,3 @@ checkpoints
 evaluation/output
 data_example
 *.zip
-
-test.py
