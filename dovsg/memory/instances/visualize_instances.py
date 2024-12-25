@@ -136,7 +136,7 @@ def vis_instances(
 
         object_classes.append(instance_objects[i]["class_name"])
         
-        print(instance_objects[i]['class_id'])
+        # print(instance_objects[i]['class_id'])
         # o3d.visualization.draw_geometries([pcd])
 
         bbox = get_bbox(pcd)

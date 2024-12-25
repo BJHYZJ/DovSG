@@ -985,24 +985,24 @@ class Controller():
     def go_to(
             self, object1: str, 
             object2: str, 
-            start_point: np.ndarray, 
-            start_rotation: np.ndarray,
-            target_point=None
+            # start_point: np.ndarray, 
+            # start_rotation: np.ndarray,
+            # target_point=None
         ):
         print(f"Runing Go to({object1}, {object2}) Task.")
 
-        # start_point, start_rotation = self.get_current_position(observations)
-        initial_theta = np.arctan2(start_rotation[1, 0], start_rotation[0, 0])
-        # self.show_start(start_point)
-        # self.show_target(object1, object2)
-        if target_point is None:
-            target_point = self.instance_localizer.localize_AonB(object1, object2)
-        paths_ = self.pathplanning.generate_paths(start_point, target_point, visualize=True)
-        paths = np.array(paths_)
+        # # start_point, start_rotation = self.get_current_position(observations)
+        # initial_theta = np.arctan2(start_rotation[1, 0], start_rotation[0, 0])
+        # # self.show_start(start_point)
+        # # self.show_target(object1, object2)
+        # if target_point is None:
+        #     target_point = self.instance_localizer.localize_AonB(object1, object2)
+        # paths_ = self.pathplanning.generate_paths(start_point, target_point, visualize=True)
+        # paths = np.array(paths_)
 
-        first_angle = paths[0, 2] - initial_theta
-        paths[:3, 2] -= paths[0, 2]
-        paths[:3, 2] += first_angle
+        # first_angle = paths[0, 2] - initial_theta
+        # paths[:3, 2] -= paths[0, 2]
+        # paths[:3, 2] += first_angle
 
         if self.debug or True:
             input("please move the agent to target point (Press Enter).")
@@ -1028,18 +1028,21 @@ class Controller():
             query=object1
         )
 
-        if self.debug:
+        if self.debug and False:
             input("please make sure object is been pickup (Press Enter).")
         else:
-            self.socket.send_info(info={
-                "action_parameters": target_pose,
-                "speed": 100,
-                }, type="pick_up")
-            response = self.socket.received()
-            print(response)
-            if "Exception response" in response.keys():
-                print("robot arm exception, this task error!")
-                exit(0)   
+            # target_pose[2, 3] += 0.03
+            # self.socket.send_info(info={
+            #     "action_parameters": target_pose,
+            #     "speed": 100,
+            #     }, type="pick_up")
+            # response = self.socket.received()
+            # print(response)
+            # if "Exception response" in response.keys():
+            #     print("robot arm exception, this task error!")
+            #     exit(0) 
+            
+            assert 1 == 1
 
         del object_handler
         torch.cuda.empty_cache()
@@ -1076,60 +1079,69 @@ class Controller():
 
 
         # pick back object
-        if self.debug:
+        if self.debug and False:
             input("please make sure back object is been pick up (Press Enter).")
         else:
-            self.socket.send_info(info={
-                "action_parameters": pick_back_objct_pose,
-                "speed": 100,
-                "pick_back": True
-                }, type="pick_up")
-            response = self.socket.received()
-            print(response)
+            # pick_back_objct_pose[3, 3] += 0
+            # self.socket.send_info(info={
+            #     "action_parameters": pick_back_objct_pose,
+            #     "speed": 100,
+            #     "pick_back": True
+            #     }, type="pick_up")
+            # response = self.socket.received()
+            # print(response)
+
+            assert 1 == 1
 
         # place object
-        if self.debug:
+        if self.debug and False:
             input("please make sure object is been place.")
         else:
-            self.socket.send_info(info={
-                "action_parameters": place_pose,
-                "speed": 100,
-                }, type="place")
-            response = self.socket.received()
-            print(response)
+            # self.socket.send_info(info={
+            #     "action_parameters": place_pose,
+            #     "speed": 100,
+            #     }, type="place")
+            # response = self.socket.received()
+            # print(response)
+
+            assert 1 == 1
 
 
         del object_handler
         torch.cuda.empty_cache()
 
     def run_tasks(self, tasks: Union[List[dict]]):
-        self.get_instance_localizer()
-        self.get_pathplanning()
+        # self.get_instance_localizer()
+        # self.get_pathplanning()
         observations, correct_success = self.get_align_observations(
             just_wrist=True,
             show_align=True,
             use_inlier_mask=True,
             self_align=False,
-            align_to_world=True,
+            align_to_world=False,
             save_name="0_start",
         )
         if not correct_success:
             assert 1 == 0, "Init Pose Error!"
 
-        init_position, init_rotation = self.get_current_position(observations)
-        current_position = init_position
-        current_rotation = init_rotation
+        # init_position, init_rotation = self.get_current_position(observations)
+        # current_position = init_position
+        # current_rotation = init_rotation
         for index, task in enumerate(tasks):
+            if index == 3:
+                assert 1 == 1
             print(f"\n\nNow are in step {self.step}\n\n")
             start_time = time.time()
             if task["action"] == "Go to":
                 if task["object1"] == "back":
                     # update instance localizer and pathplanning
-                    self.go_to(object1=task["object1"], object2=task["object2"], \
-                               start_point=current_position, start_rotation=current_rotation, target_point=init_position)
+                    # self.go_to(object1=task["object1"], object2=task["object2"], \
+                    #            start_point=current_position, start_rotation=current_rotation, target_point=init_position)
+                    pass
                 else:
-                    self.go_to(object1=task["object1"], object2=task["object2"], \
-                               start_point=current_position, start_rotation=current_rotation)
+                    # self.go_to(object1=task["object1"], object2=task["object2"], \
+                    #            start_point=current_position, start_rotation=current_rotation)
+                    self.go_to(object1=task["object1"], object2=task["object2"])
                 save_name = f"{index + 1}_after_{task['action']}({task['object1']}, {task['object2']})"
             elif task["action"] == "Pick up":
                 self.pick_up(object1=task["object1"], observations=observations, is_visualize=True)
@@ -1147,10 +1159,10 @@ class Controller():
                 show_align=True,
                 use_inlier_mask=True,
                 self_align=False,
-                align_to_world=True,
+                align_to_world=False,
                 save_name=save_name
             )
-            current_position, current_rotation = self.get_current_position(observations)
+            # current_position, current_rotation = self.get_current_position(observations)
             # just after pick up and place, update scene
             if task["action"] in ["Pick up", "Place"]:
                 if not correct_success:
@@ -1160,15 +1172,15 @@ class Controller():
                 end_time = time.time()
                 print(f"Step spend time is: {end_time - start_time}")
 
-                self.show_instances(
-                    self.instance_objects, 
-                    clip_vis=True, 
-                    scene_graph=self.instance_scene_graph, 
-                    show_background=True
-                )
-                if index != len(tasks) - 1:
-                    self.get_instance_localizer()
-                    self.get_pathplanning()
+                # self.show_instances(
+                #     self.instance_objects, 
+                #     clip_vis=True, 
+                #     scene_graph=self.instance_scene_graph, 
+                #     show_background=True
+                # )
+                # if index != len(tasks) - 1:
+                #     self.get_instance_localizer()
+                #     self.get_pathplanning()
                     
         print("Long-term task execution success!")
 
@@ -1386,33 +1398,33 @@ class Controller():
         self.step += 1
         self.create_memory_floder()
         
-        # find the indexes that need to be deleted (need delete indexes)
-        print("====> find need delete indexes")
-        need_delete_indexes = self.find_need_to_delete_indexes(observations=observations)
+        # # find the indexes that need to be deleted (need delete indexes)
+        # print("====> find need delete indexes")
+        # need_delete_indexes = self.find_need_to_delete_indexes(observations=observations)
         
-        # update view_dataset based on need_delete_indexes
-        print("====> update view dataset")
-        self.update_view_dataset(
-            observations=observations, 
-            need_delete_indexes=need_delete_indexes
-        )
+        # # update view_dataset based on need_delete_indexes
+        # print("====> update view dataset")
+        # self.update_view_dataset(
+        #     observations=observations, 
+        #     need_delete_indexes=need_delete_indexes
+        # )
 
-        # update lightglue features
-        print("====> update lightglue_features")
-        self.get_lightglue_features()
+        # # update lightglue features
+        # print("====> update lightglue_features")
+        # self.get_lightglue_features()
 
-        # update instance_objects based on need_delete_indexes
-        print("====> update instance objects")
-        self.update_instance_objects(
-            need_delete_indexes=need_delete_indexes
-        )
+        # # update instance_objects based on need_delete_indexes
+        # print("====> update instance objects")
+        # self.update_instance_objects(
+        #     need_delete_indexes=need_delete_indexes
+        # )
 
-        # update scene graph base on history scene graph and instance objects which just after update 
-        print("====> update instance scene graph")
-        self.update_scene_graph()
+        # # update scene graph base on history scene graph and instance objects which just after update 
+        # print("====> update instance scene graph")
+        # self.update_scene_graph()
 
-        if self.save_memory:
-            self.save_step_memroy()
+        # if self.save_memory:
+        #     self.save_step_memroy()
 
 if __name__ == "__main__":
     c_script = Controller()

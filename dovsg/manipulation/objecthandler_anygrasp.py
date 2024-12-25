@@ -74,7 +74,7 @@ class ObjectHandler():
                 if isinstance(query, list) and 1 not in detections.class_id:
                     print("Just has noise object been catch!")
                     continue
-                detections = detections[0]
+
                 # print(len(detections))
                 if self.is_visualize and True:
                     annotated_image, labels = self.mygroundingdino_sam2.vis_result(image, detections, classes)
@@ -87,7 +87,7 @@ class ObjectHandler():
 
         if len(observations_new) == 0:
             print("No target object been catch!")
-            assert 1 == 1
+            return
         
         observations_new = OrderedDict(list(sorted(observations_new.items(), key=lambda item: item[1]['detections'].confidence.item(), reverse=True))[:3])
         return observations_new
@@ -179,7 +179,7 @@ class ObjectHandler():
 
         if len(observations) == 0:
             print(f"Error: no {query} in observations")
-            assert 1 == 1
+            exit(0)
 
         _points = []
         _colors = []
@@ -211,7 +211,7 @@ class ObjectHandler():
             mask_obj_range[y_min:y_max, x_min:x_max] = True
 
             mask_append = point[..., 2] < 1.5  # just for 1.2 meter range
-            mask = np.logical_and(mask, mask_append)
+            # mask = np.logical_and(mask, mask_append)
             mask_all = np.logical_and(mask, mask_obj_range, mask_append)
 
             pose_b = obs["c2b"]  # pose in coordinate system
@@ -270,15 +270,6 @@ class ObjectHandler():
                 obj_colors=_obj_colors
             )
             return pick_up_pose
-
-
-        # pick_up_pose = self.heuristics_pick_up_point(
-        #     obj_points=_obj_points, 
-        #     obj_colors=_obj_colors
-        # )
-        # return pick_up_pose
-
-
 
         gg = gg.nms().sort_by_score()
         # print(gg[0].score)
@@ -342,15 +333,14 @@ class ObjectHandler():
             )
             return pick_up_pose
 
-        # best_pose = None
-        # best_gg = None
-        # min_cost = np.inf
+        best_pose = None
+        best_gg = None
+        min_cost = np.inf
         # second filter gripper by init pose to target consumption
 
-        # g_initial_rot = self.gripper_initial_pose[:3, :3]
-        # g_initial_trans = self.gripper_initial_pose[:3, 3]
+        g_initial_rot = self.gripper_initial_pose[:3, :3]
+        g_initial_trans = self.gripper_initial_pose[:3, 3]
 
-        pose_res_list = []
         for idx, fg in enumerate(filter_gg):
             # print(idx)
             grasp_rot = fg.rotation_matrix
@@ -361,29 +351,26 @@ class ObjectHandler():
             grasp_matrix[:3, 3] = grasp_tran
             grasp_matrix = transform_inv @ grasp_matrix
 
-            pose_res_list.append(grasp_matrix)
-            # # rotation cost
-            # relative_rot = np.linalg.inv(g_initial_rot) @ grasp_matrix[:3, :3]
-            # rot_vector = R.from_matrix(relative_rot).as_rotvec()
-            # rot_cost = np.linalg.norm(rot_vector)
+            # rotation cost
+            relative_rot = np.linalg.inv(g_initial_rot) @ grasp_matrix[:3, :3]
+            rot_vector = R.from_matrix(relative_rot).as_rotvec()
+            rot_cost = np.linalg.norm(rot_vector)
 
-            # # translation cost
-            # relative_trans = grasp_matrix[:3, 3] - g_initial_trans
-            # trans_cost = np.linalg.norm(relative_trans)
+            # translation cost
+            relative_trans = grasp_matrix[:3, 3] - g_initial_trans
+            trans_cost = np.linalg.norm(relative_trans)
 
-            # cost = rot_cost * self.rot_cost_rate + trans_cost * (1 - self.rot_cost_rate)
+            cost = rot_cost * self.rot_cost_rate + trans_cost * (1 - self.rot_cost_rate)
 
-            # if cost < min_cost:
-            #     min_cost = cost
-            #     best_gg = fg
-            #     best_pose = grasp_matrix
+            if cost < min_cost:
+                min_cost = cost
+                best_gg = fg
+                best_pose = grasp_matrix
 
             # print(cost)
             # coordinate = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.3, origin=[0, 0, 0])
             # o3d.visualization.draw_geometries([fg.transform(transform_inv).to_open3d_geometry(), cloud, coordinate])
-        # print(f"min cost is {min_cost}")
-        best_pose = pose_res_list[0]
-        filter_gg_clone = copy.deepcopy(filter_gg)
+        print(f"min cost is {min_cost}")
 
         # visualization
         if self.is_visualize:
@@ -395,12 +382,7 @@ class ObjectHandler():
             o3d.visualization.draw_geometries(filter_gg.transform(transform_inv).to_open3d_geometry_list() + [cloud, coordinate])
             # o3d.visualization.draw_geometries([filter_grippers[0], cloud_base, coordinate])
             # o3d.visualization.draw_geometries([best_gg.transform(transform_inv).to_open3d_geometry(), cloud, coordinate])
-            o3d.visualization.draw_geometries([filter_gg_clone[0].transform(transform_inv).to_open3d_geometry(), cloud])
-
-        # best_pose_ = self.heuristics_pick_up_point(
-        #     obj_points=_obj_points, 
-        #     obj_colors=_obj_colors,
-        # )
+            o3d.visualization.draw_geometries([best_gg.transform(transform_inv).to_open3d_geometry(), cloud])
 
         return best_pose
         
@@ -480,7 +462,7 @@ class ObjectHandler():
 
 
     def place(self, observations, object1, object2):
-        observations = self.process_observations(observations=observations, query=object2)
+        observations = self.process_observations(observations=observations, query=[object1, object2])
 
         place_point_list = []
         place_color_list = []
@@ -491,12 +473,16 @@ class ObjectHandler():
             pose_b = obs["c2b"]  # pose in coordinate system
             point_b = point @ pose_b[:3, :3].T + pose_b[:3, 3]
             detections = obs["detections"]
+            # process noise mask which belong to object1 (which is been pickuped)
+            class_id = detections.class_id
 
-            range_mask = np.logical_and(point[..., 2] > 0.35, point[..., 2] < 1.2)
-            target_mask = detections.mask[0]
-            mask = np.logical_and(range_mask, target_mask, mask)
-            place_point_list.append(point_b[mask])
-            place_color_list.append(rgb[mask])
+            if 1 in class_id:
+                range_mask = np.logical_and(point[..., 2] > 0.35, point[..., 2] < 1.2)
+                target_detections = detections[np.where(class_id == 1)[0]]
+                target_mask = target_detections.mask[0]
+                mask = np.logical_and(range_mask, target_mask, mask)
+                place_point_list.append(point_b[mask])
+                place_color_list.append(rgb[mask])
 
                 # Image.fromarray((rgb * 255).astype(np.uint8)).show()
                 # pcd = o3d.geometry.PointCloud()

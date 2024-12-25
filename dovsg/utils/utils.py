@@ -11,14 +11,8 @@ from typing import Union
 
 TIMEINTERVAL = 0.02
 
-CAM_IN_END_Translation = [-0.01131290, 0.05520051, 0.10699229]  # px, py, pz
-CAM_IN_END_Quaternion = [0.00685809, -0.00771620, 0.99855130, 0.05280834]  # qx, qy, qz, qw
-
-
-T_cam_in_end = np.eye(4)
-T_cam_in_end[:3, :3] = R.from_quat(CAM_IN_END_Quaternion).as_matrix()
-T_cam_in_end[:3, 3] = CAM_IN_END_Translation
-
+# CAM_IN_END_Translation = [-0.01131290, 0.05520051, 0.10699229]  # px, py, pz
+# CAM_IN_END_Quaternion = [0.00685809, -0.00771620, 0.99855130, 0.05280834]  # qx, qy, qz, qw
 
 WH = [1280, 720]  #  [640, 480]
 
